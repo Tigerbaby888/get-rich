@@ -467,22 +467,22 @@
     </div>
   </div>
 
-</div><!-- end .app -->
-
-<!-- Modal -->
-<div class="modal-overlay" id="modal">
-  <div class="modal-box">
-    <h3>設定預放初始金額</h3>
-    <input class="form-input" type="number" id="modal-input" placeholder="輸入金額" step="1" inputmode="numeric" />
-    <div class="modal-btns">
-      <button class="btn-cancel" onclick="hideModal()">取消</button>
-      <button class="btn-confirm" onclick="saveInitial()">確定</button>
+  <!-- Modal (inline inside app) -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal-box">
+      <h3>設定預放初始金額</h3>
+      <input class="form-input" type="number" id="modal-input" placeholder="輸入金額" step="1" inputmode="numeric" />
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="hideModal()">取消</button>
+        <button class="btn-confirm" onclick="saveInitial()">確定</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Toast -->
-<div class="toast" id="toast"></div>
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+</div><!-- end .app -->
 
 <script>
 // =====================
@@ -657,13 +657,16 @@ function showModal() {
 function hideModal() { document.getElementById('modal').classList.remove('open'); }
 
 function saveInitial() {
-  const v = parseInt(document.getElementById('modal-input').value);
-  if (isNaN(v) || v < 0) return;
+  const input = document.getElementById('modal-input');
+  const v = parseInt(input.value);
+  if (isNaN(v) || v < 0) { showToast('請輸入正確金額'); return; }
   const old = data.initialAmount;
   data.initialAmount = v;
-  addLog('set', null, `預放初始金額從 ${fmt(old)} 調整為 ${fmt(v)}`);
-  saveData(); renderAll(); hideModal();
-  showToast('初始金額已更新');
+  addLog('set', null, '預放初始金額從 '+fmt(old)+' 調整為 '+fmt(v));
+  saveData();
+  renderAll();
+  hideModal();
+  showToast('初始金額已更新為 '+fmt(v));
 }
 
 function addEntry() {
