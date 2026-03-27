@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
 <title>💑 預放款帳本</title>
 <link rel="manifest" href="#" />
-<meta name="theme-color" content="#2C1A0E" />
+<meta name="theme-color" content="#1A0E2C" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="預放款帳本" />
@@ -18,23 +18,23 @@
   /* ===== RESET & ROOT ===== */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   :root {
-    --bg:      #1E1208;
-    --bg2:     #2C1A0E;
-    --bg3:     #3A2210;
-    --bg4:     #4A2E19;
-    --card:    #2E1B0F;
-    --border:  rgba(255,220,160,0.1);
-    --border2: rgba(255,220,160,0.2);
-    --text:    #F5E6D3;
-    --text2:   #C4A882;
-    --text3:   #7a5e42;
+    --bg:      #0F0A1E;
+    --bg2:     #1A1030;
+    --bg3:     #231540;
+    --bg4:     #2E1D52;
+    --card:    #1C1235;
+    --border:  rgba(200,180,255,0.1);
+    --border2: rgba(200,180,255,0.2);
+    --text:    #EDE8FF;
+    --text2:   #B8A8E8;
+    --text3:   #7A6AAA;
     --green:   #82D47E;
     --green-bg:rgba(130,212,126,0.12);
     --red:     #F08888;
     --red-bg:  rgba(240,136,136,0.12);
-    --accent:  #D4923A;
-    --accent2: #F0B05A;
-    --accent-bg: rgba(212,146,58,0.15);
+    --accent:  #A87FE8;
+    --accent2: #C4A8FF;
+    --accent-bg: rgba(168,127,232,0.15);
     --radius:  12px;
     --radius-sm: 8px;
   }
@@ -569,7 +569,8 @@ function initFirebase() {
   try {
     firebase.initializeApp(cfg);
     db = firebase.database();
-    setSyncUI(true, '同步中');
+    fbReady = true;
+    setSyncUI(true, '已連線');
 
     // Listen data
     db.ref('data').on('value', snap => {
@@ -577,6 +578,8 @@ function initFirebase() {
       if (val) {
         data = { initialAmount: val.initialAmount || 0, entries: val.entries ? Object.values(val.entries) : [] };
         data.entries.sort((a,b) => b.id - a.id);
+      } else {
+        data = { initialAmount: 0, entries: [] };
       }
       renderAll();
     });
@@ -587,10 +590,8 @@ function initFirebase() {
       logs = val ? Object.values(val).sort((a,b) => b.id - a.id) : [];
       if (currentTab==='log') renderLog();
     });
-
-    fbReady = true;
-    setSyncUI(true, '已連線');
   } catch(e) {
+    fbReady = false;
     setSyncUI(false, '連線失敗');
     useLocalFallback();
   }
