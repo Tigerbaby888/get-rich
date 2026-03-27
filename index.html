@@ -12,6 +12,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+button{-webkit-appearance:none;appearance:none;}
 :root{
   --bg:#0F0A1E;--bg2:#1A1030;--bg3:#231540;--card:#1C1235;
   --border:rgba(200,180,255,0.12);--border2:rgba(200,180,255,0.22);
@@ -158,9 +159,9 @@ tfoot.ltf td{background:var(--bg3);font-weight:600;color:var(--text);border-top:
     <div class="sync-badge"><div class="sdot" id="sdot"></div><span id="slabel">連線中</span></div>
   </div>
   <div class="tabs">
-    <button class="tab active" id="tab-main" onclick="switchTab('main')">記帳</button>
-    <button class="tab" id="tab-ledger" onclick="switchTab('ledger')">流水帳</button>
-    <button class="tab" id="tab-log" onclick="switchTab('log')">變更日誌</button>
+    <button type="button" class="tab active" id="tab-main" onclick="switchTab('main')">記帳</button>
+    <button type="button" class="tab" id="tab-ledger" onclick="switchTab('ledger')">流水帳</button>
+    <button type="button" class="tab" id="tab-log" onclick="switchTab('log')">變更日誌</button>
   </div>
 </div>
 
@@ -177,7 +178,7 @@ tfoot.ltf td{background:var(--bg3);font-weight:600;color:var(--text);border-top:
       <div class="init-block">
         <div class="init-label">預放總金額</div>
         <div class="init-val" id="init-disp">0</div>
-        <button class="init-btn" onclick="openModal()">修改初始金額</button>
+        <button type="button" class="init-btn" onclick="openModal()">修改初始金額</button>
       </div>
     </div>
     <div class="sum-row">
@@ -192,16 +193,16 @@ tfoot.ltf td{background:var(--bg3);font-weight:600;color:var(--text);border-top:
       <h3>設定預放初始金額</h3>
       <input class="fi" type="number" id="modal-input" placeholder="輸入金額" step="1" inputmode="numeric"/>
       <div class="modal-btns">
-        <button class="m-cancel" onclick="closeModal()">取消</button>
-        <button class="m-confirm" onclick="confirmModal()">確定</button>
+        <button type="button" class="m-cancel" onclick="closeModal()">取消</button>
+        <button type="button" class="m-confirm" onclick="confirmModal()">確定</button>
       </div>
     </div>
   </div>
 
   <div class="form-card">
     <div class="type-row">
-      <button class="type-btn t-in" id="btn-in" onclick="setType('in')">↑ 存入（轉給她）</button>
-      <button class="type-btn" id="btn-out" onclick="setType('out')">↓ 支出（她代付）</button>
+      <button type="button" class="type-btn t-in" id="btn-in" onclick="setType('in')">↑ 存入（轉給她）</button>
+      <button type="button" class="type-btn" id="btn-out" onclick="setType('out')">↓ 支出（她代付）</button>
     </div>
     <div class="flabel">分類標籤</div>
     <div class="tags" id="tags"></div>
@@ -213,7 +214,7 @@ tfoot.ltf td{background:var(--bg3);font-weight:600;color:var(--text);border-top:
       </div>
       <input class="fi" type="text" id="f-note" placeholder="備註（選填）"/>
     </div>
-    <button class="submit" onclick="addEntry()">＋ 新增記錄</button>
+    <button type="button" class="submit" onclick="addEntry()">＋ 新增記錄</button>
   </div>
 
   <div class="sec-hdr">
@@ -222,7 +223,10 @@ tfoot.ltf td{background:var(--bg3);font-weight:600;color:var(--text);border-top:
   </div>
   <div class="filter-scroll" id="filter-row"></div>
   <div class="entries-wrap" id="entries-list"><div class="empty">載入中...</div></div>
-  <div class="footer">雙方即時同步</div>
+  <div class="footer" style="display:flex;justify-content:space-between;align-items:center">
+  <span>雙方即時同步</span>
+  <button type="button" onclick="clearAll()" style="background:none;border:none;color:var(--red);font-size:11px;cursor:pointer;opacity:0.5;font-family:inherit">清除所有資料</button>
+</div>
 </div>
 
 <!-- 流水帳 -->
@@ -367,7 +371,7 @@ function setType(t){
 function renderTags(){
   const list=curType==='in'?TAGS_IN:TAGS_OUT;
   document.getElementById('tags').innerHTML=list.map(t=>
-    `<button class="tag${selTag===t?' active':''}" onclick="pickTag('${t}')">${t}</button>`
+    `<button type="button" class="tag${selTag===t?' active':''}" onclick="pickTag('${t}')">${t}</button>`
   ).join('');
 }
 function pickTag(t){
@@ -454,10 +458,10 @@ function renderSummary(){
 function renderEntries(){
   const allTags=[...new Set(appData.entries.map(e=>e.tag).filter(Boolean))];
   document.getElementById('filter-row').innerHTML=
-    `<button class="fbtn${filterTag==='all'?' on':''}" onclick="setFilter('all')">全部</button>`+
-    `<button class="fbtn${filterTag==='in'?' on':''}" onclick="setFilter('in')">存入</button>`+
-    `<button class="fbtn${filterTag==='out'?' on':''}" onclick="setFilter('out')">支出</button>`+
-    allTags.map(t=>`<button class="fbtn${filterTag===t?' on':''}" onclick="setFilter('${t}')">${t}</button>`).join('');
+    `<button type="button" class="fbtn${filterTag==='all'?' on':''}" onclick="setFilter('all')">全部</button>`+
+    `<button type="button" class="fbtn${filterTag==='in'?' on':''}" onclick="setFilter('in')">存入</button>`+
+    `<button type="button" class="fbtn${filterTag==='out'?' on':''}" onclick="setFilter('out')">支出</button>`+
+    allTags.map(t=>`<button type="button" class="fbtn${filterTag===t?' on':''}" onclick="setFilter('${t}')">${t}</button>`).join('');
 
   let shown=appData.entries;
   if(filterTag==='in') shown=shown.filter(e=>e.type==='in');
@@ -481,7 +485,7 @@ function renderEntries(){
         <div class="eamt ${isIn?'amt-in':'amt-out'}">${isIn?'+':'−'}${fmt(e.amount)}</div>
         <div class="edate">${e.date}</div>
       </div>
-      <button class="edel" onclick="delEntry(${e.id})">×</button>
+      <button type="button" class="edel" onclick="delEntry(${e.id})">×</button>
     </div>`;
   }).join('');
 }
@@ -532,6 +536,15 @@ function renderLog(){
       ${meta?`<div class="log-meta">${meta}</div>`:''}
     </div>`;
   }).join('');
+}
+
+// ── Clear All Data ──
+function clearAll(){
+  if(!confirm('確定要清除所有資料？此動作無法復原！')) return;
+  if(!fbOK||!db){ showToast('未連線'); return; }
+  db.ref('data').set({initialAmount:0, entries:{}});
+  db.ref('logs').set({});
+  showToast('已清除所有資料');
 }
 
 // ── Boot ──
