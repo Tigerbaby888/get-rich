@@ -146,7 +146,7 @@ tfoot.ltf td{background:var(--bg3);font-weight:600;color:var(--text);border-top:
 .m-confirm{background:var(--accent);color:#fff;font-weight:600}
 
 /* TOAST */
-.toast{display:none;text-align:center;margin:8px 14px 0;padding:9px 18px;background:var(--bg3);color:var(--text);border:0.5px solid var(--border2);border-radius:20px;font-size:13px}
+.toast{display:none;text-align:center;margin:8px 14px 0;padding:12px 18px;background:var(--accent);color:#fff;border-radius:12px;font-size:14px;font-weight:600}
 .toast.show{display:block}
 </style>
 </head>
@@ -289,7 +289,8 @@ document.getElementById('f-date').value = today();
 function showToast(msg) {
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2500);
+  clearTimeout(window._toastTimer);
+  window._toastTimer=setTimeout(()=>t.classList.remove('show'),3000);
 }
 
 // ── Firebase init ──
@@ -301,14 +302,10 @@ function initFB() {
     setSyncUI(true,'已連線');
     db.ref('data').on('value', snap=>{
       const v=snap.val();
-      if(v){
-        appData={
-          initialAmount: v.initialAmount||0,
-          entries: v.entries ? Object.values(v.entries).sort((a,b)=>b.id-a.id) : []
-        };
-      } else {
-        appData={initialAmount:0,entries:[]};
-      }
+      appData={
+        initialAmount: v ? (v.initialAmount||0) : 0,
+        entries: (v && v.entries) ? Object.values(v.entries).sort((a,b)=>b.id-a.id) : []
+      };
       renderAll();
     });
     db.ref('logs').on('value', snap=>{
@@ -396,9 +393,9 @@ function confirmModal(){
   appData.initialAmount=v;
   addLog('set',null,'預放初始金額從 '+fmt(old)+' 調整為 '+fmt(v));
   saveData();
-  renderAll();
   closeModal();
-  showToast('已設定為 '+fmt(v)+' 元');
+  renderAll();
+  showToast('✓ 初始金額已設為 '+fmt(v)+' 元');
 }
 
 // ── Filter ──
@@ -421,8 +418,9 @@ function addEntry(){
   document.getElementById('f-note').value='';
   document.getElementById('f-date').value=today();
   selTag=''; renderTags();
-  if(!fbOK) renderAll();
-  showToast('已新增');
+  renderAll();
+  const sign = curType==='in' ? '+' : '-';
+  showToast('已新增　'+sign+fmt(amt)+' 元　（'+desc+'）');
 }
 
 // ── Delete ──
