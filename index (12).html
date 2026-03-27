@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>💑 預放款帳本</title>
+<link rel="manifest" href="#" />
+<meta name="theme-color" content="#2C1A0E" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="預放款帳本" />
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<style>
+  /* ===== RESET & ROOT ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg:      #1E1208;
+    --bg2:     #2C1A0E;
+    --bg3:     #3A2210;
+    --bg4:     #4A2E19;
+    --card:    #2E1B0F;
+    --border:  rgba(255,220,160,0.1);
+    --border2: rgba(255,220,160,0.2);
+    --text:    #F5E6D3;
+    --text2:   #C4A882;
+    --text3:   #7a5e42;
+    --green:   #82D47E;
+    --green-bg:rgba(130,212,126,0.12);
+    --red:     #F08888;
+    --red-bg:  rgba(240,136,136,0.12);
+    --accent:  #D4923A;
+    --accent2: #F0B05A;
+    --accent-bg: rgba(212,146,58,0.15);
+    --radius:  12px;
+    --radius-sm: 8px;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'Noto Sans TC', 'PingFang TC', sans-serif;
+    min-height: 100vh;
+    overscroll-behavior: none;
+  }
+
+  /* ===== APP SHELL ===== */
+  .app { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* ===== HEADER ===== */
+  .header {
+    background: var(--bg2);
+    border-bottom: 0.5px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
+    padding-top: env(safe-area-inset-top);
+  }
+  .header-top {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 16px 0;
+  }
+  .header-title { font-size: 17px; font-weight: 600; letter-spacing: 0.3px; color: var(--text); }
+  .sync-badge {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--text3);
+    background: var(--bg3); border-radius: 20px; padding: 4px 10px;
+  }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .sync-dot.syncing { animation: pulse 1.5s infinite; }
+  .sync-dot.offline { background: var(--text3); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .tabs { display: flex; padding: 10px 16px 0; gap: 0; }
+  .tab-btn {
+    flex: 1; padding: 9px 4px 10px; background: transparent; border: none;
+    font-size: 13px; cursor: pointer; color: var(--text3);
+    border-bottom: 2px solid transparent; transition: all 0.15s;
+    font-family: inherit;
+  }
+  .tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent); font-weight: 500; }
+
+  /* ===== PAGE CONTENT ===== */
+  .page { flex: 1; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+
+  /* ===== SUMMARY CARD ===== */
+  .summary-card {
+    margin: 14px 14px 0;
+    background: var(--card);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .summary-card::before {
+    content: '';
+    position: absolute; top: 0; right: 0;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle at 80% 20%, rgba(212,146,58,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .summary-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .balance-block {}
+  .balance-label { font-size: 11px; color: var(--text3); margin-bottom: 5px; letter-spacing: 0.5px; }
+  .balance-val { font-size: 30px; font-weight: 600; line-height: 1; }
+  .bal-pos { color: var(--green); }
+  .bal-neg { color: var(--red); }
+  .bal-zero { color: var(--text2); }
+  .initial-block { text-align: right; }
+  .initial-label { font-size: 11px; color: var(--text3); margin-bottom: 5px; }
+  .initial-val { font-size: 18px; font-weight: 600; color: var(--text); }
+  .initial-edit {
+    font-size: 11px; color: var(--accent); cursor: pointer;
+    margin-top: 4px; display: inline-block;
+    border-bottom: 0.5px dashed rgba(212,146,58,0.5);
+  }
+  .summary-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat {
+    background: var(--bg3); border-radius: var(--radius-sm); padding: 10px 12px;
+    border: 0.5px solid var(--border);
+  }
+  .stat-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+  .stat-val { font-size: 16px; font-weight: 600; }
+  .s-in { color: var(--green); }
+  .s-out { color: var(--red); }
+
+  /* ===== ADD FORM ===== */
+  .add-form {
+    margin: 12px 14px 0;
+    background: var(--card);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+  .type-toggle { display: flex; gap: 8px; margin-bottom: 12px; }
+  .type-btn {
+    flex: 1; padding: 10px 4px;
+    border: 0.5px solid var(--border2); border-radius: var(--radius-sm);
+    background: transparent; font-size: 13px; cursor: pointer;
+    color: var(--text3); transition: all 0.15s; font-family: inherit;
+  }
+  .type-btn.active-in { background: var(--green-bg); color: var(--green); border-color: rgba(130,212,126,0.4); }
+  .type-btn.active-out { background: var(--red-bg); color: var(--red); border-color: rgba(240,136,136,0.4); }
+
+  .form-section-label { font-size: 11px; color: var(--text3); margin-bottom: 7px; font-weight: 500; letter-spacing: 0.5px; }
+  .tags-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tag {
+    padding: 5px 11px; border: 0.5px solid var(--border2);
+    border-radius: 20px; font-size: 12px; cursor: pointer;
+    color: var(--text2); background: var(--bg3); transition: all 0.12s;
+    font-family: inherit;
+  }
+  .tag.active { background: var(--accent-bg); color: var(--accent2); border-color: rgba(212,146,58,0.5); }
+
+  .form-inputs { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .form-input {
+    width: 100%; font-size: 14px; padding: 10px 12px;
+    background: var(--bg3); border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text);
+    font-family: inherit; outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus { border-color: var(--border2); }
+  .form-input::placeholder { color: var(--text3); }
+  .form-row2 { display: flex; gap: 8px; }
+  .form-row2 .form-input { flex: 1; }
+  .submit-btn {
+    width: 100%; padding: 12px; border: none;
+    background: var(--accent); color: #fff;
+    border-radius: var(--radius-sm); font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .submit-btn:active { opacity: 0.85; transform: scale(0.99); }
+
+  /* ===== ENTRIES LIST ===== */
+  .section-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 14px 8px;
+  }
+  .section-title { font-size: 14px; font-weight: 500; color: var(--text2); }
+  .filter-scroll { display: flex; gap: 6px; overflow-x: auto; padding: 0 14px 10px; }
+  .filter-scroll::-webkit-scrollbar { display: none; }
+  .filter-btn {
+    white-space: nowrap; padding: 5px 12px;
+    border: 0.5px solid var(--border2); border-radius: 20px;
+    font-size: 12px; cursor: pointer; background: transparent;
+    color: var(--text2); font-family: inherit; transition: all 0.12s;
+  }
+  .filter-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .entries-card {
+    margin: 0 14px;
+    background: var(--card); border: 0.5px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .entry {
+    display: flex; align-items: center; gap: 10px;
+    padding: 13px 14px; border-bottom: 0.5px solid var(--border);
+    transition: background 0.1s;
+  }
+  .entry:last-child { border-bottom: none; }
+  .entry:active { background: var(--bg3); }
+  .entry-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600; flex-shrink: 0;
+  }
+  .icon-in { background: var(--green-bg); color: var(--green); }
+  .icon-out { background: var(--red-bg); color: var(--red); }
+  .entry-info { flex: 1; min-width: 0; }
+  .entry-desc { font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .entry-sub { font-size: 12px; color: var(--text3); margin-top: 2px; display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .entry-tag-pill {
+    background: var(--bg3); border-radius: 8px; padding: 1px 7px;
+    font-size: 11px; color: var(--text2);
+  }
+  .entry-right { text-align: right; flex-shrink: 0; }
+  .entry-amount { font-size: 15px; font-weight: 600; }
+  .amount-in { color: var(--green); }
+  .amount-out { color: var(--red); }
+  .entry-date-s { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .entry-del {
+    background: none; border: none; color: var(--text3);
+    cursor: pointer; font-size: 18px; padding: 0 0 0 8px;
+    opacity: 0.35; transition: opacity 0.15s; line-height: 1;
+  }
+  .entry-del:hover { opacity: 1; color: var(--red); }
+  .empty-state { text-align: center; padding: 2.5rem; color: var(--text3); font-size: 14px; }
+  .sync-footer {
+    text-align: center; font-size: 11px; color: var(--text3);
+    margin: 10px 14px 0; padding: 8px;
+    background: var(--bg2); border-radius: var(--radius-sm);
+  }
+
+  /* ===== LEDGER TABLE ===== */
+  .ledger-meta {
+    display: flex; justify-content: space-between;
+    padding: 14px 14px 8px; font-size: 12px; color: var(--text3);
+  }
+  .ledger-wrap {
+    margin: 0 14px;
+    background: var(--card); border: 0.5px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .ledger-scroll { overflow-x: auto; }
+  .ledger-scroll::-webkit-scrollbar { height: 3px; }
+  .ledger-scroll::-webkit-scrollbar-track { background: var(--bg3); }
+  .ledger-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  table.lt { width: 100%; border-collapse: collapse; min-width: 420px; }
+  table.lt thead { background: var(--bg3); }
+  table.lt th {
+    padding: 10px 10px; text-align: left;
+    font-size: 11px; font-weight: 500; color: var(--text3);
+    border-bottom: 0.5px solid var(--border2); white-space: nowrap;
+    letter-spacing: 0.3px;
+  }
+  table.lt td {
+    padding: 10px 10px; border-bottom: 0.5px solid var(--border);
+    font-size: 13px; color: var(--text2); vertical-align: top;
+  }
+  table.lt tr:last-child td { border-bottom: none; }
+  table.lt tr:hover td { background: rgba(255,220,160,0.03); }
+  table.lt th:nth-child(4), table.lt td:nth-child(4),
+  table.lt th:nth-child(5), table.lt td:nth-child(5),
+  table.lt th:nth-child(6), table.lt td:nth-child(6) { text-align: right; }
+  .td-date { color: var(--text3); white-space: nowrap; font-size: 12px; }
+  .td-desc { color: var(--text); font-weight: 500; }
+  .td-note { font-size: 11px; color: var(--text3); font-weight: 400; }
+  .td-tag-pill { background: var(--bg3); border-radius: 8px; padding: 2px 7px; font-size: 11px; color: var(--text2); white-space: nowrap; }
+  .td-in { color: var(--green); font-weight: 600; white-space: nowrap; }
+  .td-out { color: var(--red); font-weight: 600; white-space: nowrap; }
+  .td-bal { font-weight: 600; white-space: nowrap; }
+  .td-bal-pos { color: var(--green); }
+  .td-bal-neg { color: var(--red); }
+  tfoot.lt-foot td {
+    background: var(--bg3); font-weight: 600; color: var(--text);
+    border-top: 0.5px solid var(--border2); border-bottom: none;
+  }
+
+  /* ===== LOG ===== */
+  .log-banner {
+    margin: 14px 14px 10px;
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 10px 12px;
+    background: var(--accent-bg); border-radius: var(--radius-sm);
+    border: 0.5px solid rgba(212,146,58,0.25);
+    font-size: 12px; color: var(--accent2); line-height: 1.5;
+  }
+  .log-list-card {
+    margin: 0 14px;
+    background: var(--card); border: 0.5px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .log-item { padding: 12px 14px; border-bottom: 0.5px solid var(--border); }
+  .log-item:last-child { border-bottom: none; }
+  .log-ts { font-size: 11px; color: var(--text3); font-family: 'Menlo', monospace; margin-bottom: 4px; }
+  .log-body { font-size: 13px; color: var(--text); }
+  .log-add { color: var(--green); font-weight: 600; }
+  .log-del { color: var(--red); font-weight: 600; }
+  .log-set { color: var(--accent2); font-weight: 600; }
+  .log-meta { font-size: 12px; color: var(--text3); margin-top: 3px; }
+  .log-count-txt { font-size: 12px; color: var(--text3); padding: 0 14px 8px; }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+    display: none; align-items: center; justify-content: center; z-index: 100;
+    padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--bg2); border-radius: var(--radius);
+    padding: 20px; width: 100%; max-width: 300px;
+    border: 0.5px solid var(--border2);
+  }
+  .modal-box h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+  .modal-box .form-input { margin-bottom: 12px; }
+  .modal-btns { display: flex; gap: 8px; }
+  .modal-btns button { flex: 1; padding: 10px; border-radius: var(--radius-sm); font-size: 14px; cursor: pointer; font-family: inherit; border: none; }
+  .btn-cancel { background: var(--bg3); color: var(--text2); border: 0.5px solid var(--border2) !important; }
+  .btn-confirm { background: var(--accent); color: #fff; font-weight: 600; }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position: fixed; bottom: calc(24px + env(safe-area-inset-bottom));
+    left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--bg3); color: var(--text); border: 0.5px solid var(--border2);
+    border-radius: 20px; padding: 9px 18px; font-size: 13px;
+    transition: transform 0.3s ease; z-index: 200; white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ===== FIREBASE SETUP BANNER ===== */
+  .setup-banner {
+    margin: 14px; padding: 14px;
+    background: var(--accent-bg); border: 0.5px solid rgba(212,146,58,0.3);
+    border-radius: var(--radius); font-size: 13px; color: var(--text2); line-height: 1.7;
+  }
+  .setup-banner strong { color: var(--accent2); }
+  .setup-banner code {
+    display: block; background: var(--bg3); border-radius: 6px;
+    padding: 8px 10px; font-family: 'Menlo', monospace; font-size: 11px;
+    color: var(--text); margin: 8px 0; white-space: pre-wrap; word-break: break-all;
+  }
+  .setup-banner input.setup-input {
+    width: 100%; margin: 4px 0 8px; padding: 8px 10px;
+    background: var(--bg3); border: 0.5px solid var(--border2);
+    border-radius: 6px; color: var(--text); font-size: 13px; font-family: inherit;
+  }
+  .setup-save-btn {
+    padding: 9px 18px; background: var(--accent); color: #fff;
+    border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-top">
+      <div class="header-title">💑 預放款帳本</div>
+      <div class="sync-badge">
+        <div class="sync-dot syncing" id="sync-dot"></div>
+        <span id="sync-label">連線中</span>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-main" onclick="switchTab('main')">記帳</button>
+      <button class="tab-btn" id="tab-ledger" onclick="switchTab('ledger')">流水帳</button>
+      <button class="tab-btn" id="tab-log" onclick="switchTab('log')">變更日誌</button>
+    </div>
+  </div>
+
+  <!-- PAGE: 記帳 -->
+  <div class="page" id="page-main">
+    <!-- Firebase 設定提示（未設定時顯示） -->
+    <div id="setup-banner" class="setup-banner" style="display:none">
+      <strong>⚙️ 需要設定 Firebase 才能雙手機同步</strong><br>
+      請依照 README 說明建立 Firebase Realtime Database，然後貼上你的設定：
+      <input class="setup-input" id="fb-api-key" placeholder="apiKey" />
+      <input class="setup-input" id="fb-project-id" placeholder="projectId" />
+      <input class="setup-input" id="fb-db-url" placeholder="databaseURL（例：https://xxx-default-rtdb.firebaseio.com）" />
+      <button class="setup-save-btn" onclick="saveFirebaseConfig()">儲存並連線</button>
+    </div>
+
+    <!-- Summary -->
+    <div class="summary-card">
+      <div class="summary-top">
+        <div class="balance-block">
+          <div class="balance-label">目前餘額（剩餘）</div>
+          <div class="balance-val bal-zero" id="balance">+0</div>
+        </div>
+        <div class="initial-block">
+          <div class="initial-label">預放總金額</div>
+          <div class="initial-val" id="total-in-disp">0</div>
+          <div class="initial-edit" onclick="showModal()">修改初始金額</div>
+        </div>
+      </div>
+      <div class="summary-row">
+        <div class="stat">
+          <div class="stat-label">累計存入</div>
+          <div class="stat-val s-in" id="stat-in">+0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">累計支出</div>
+          <div class="stat-val s-out" id="stat-out">-0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Form -->
+    <div class="add-form">
+      <div class="type-toggle">
+        <button class="type-btn active-in" id="btn-in" onclick="setType('in')">↑ 存入（轉給她）</button>
+        <button class="type-btn" id="btn-out" onclick="setType('out')">↓ 支出（她代付）</button>
+      </div>
+      <div class="form-section-label">分類標籤</div>
+      <div class="tags-row" id="tags-row"></div>
+      <div class="form-inputs">
+        <input class="form-input" type="text" id="input-desc" placeholder="說明（如：買貨、茂洋退款）" />
+        <div class="form-row2">
+          <input class="form-input" type="number" id="input-amount" placeholder="金額" min="0" step="1" inputmode="numeric" />
+          <input class="form-input" type="date" id="input-date" />
+        </div>
+        <input class="form-input" type="text" id="input-note" placeholder="備註（選填）" />
+      </div>
+      <button class="submit-btn" onclick="addEntry()">＋ 新增記錄</button>
+    </div>
+
+    <!-- Entries -->
+    <div class="section-header">
+      <div class="section-title">交易記錄</div>
+    </div>
+    <div class="filter-scroll" id="filter-row"></div>
+    <div class="entries-card" id="entries-list">
+      <div class="empty-state">載入中...</div>
+    </div>
+    <div class="sync-footer">最後更新：<span id="last-update">—</span>　·　雙方即時同步</div>
+  </div>
+
+  <!-- PAGE: 流水帳 -->
+  <div class="page" id="page-ledger" style="display:none">
+    <div class="ledger-meta">
+      <span id="ledger-count">共 0 筆</span>
+      <span id="ledger-period"></span>
+    </div>
+    <div class="ledger-wrap">
+      <div class="ledger-scroll">
+        <table class="lt">
+          <thead>
+            <tr>
+              <th>日期</th>
+              <th>說明</th>
+              <th>標籤</th>
+              <th>存入</th>
+              <th>支出</th>
+              <th>餘額</th>
+            </tr>
+          </thead>
+          <tbody id="ledger-tbody"></tbody>
+          <tfoot class="lt-foot" id="ledger-tfoot"></tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="sync-footer" style="margin-top:10px">最後更新：<span id="last-update2">—</span></div>
+  </div>
+
+  <!-- PAGE: 變更日誌 -->
+  <div class="page" id="page-log" style="display:none">
+    <div class="log-banner">
+      🔒 此日誌由系統自動記錄，所有新增、刪除、調整操作皆永久保存，任何人皆無法刪除或修改。
+    </div>
+    <div class="log-count-txt" id="log-count"></div>
+    <div class="log-list-card" id="log-list">
+      <div class="empty-state">載入中...</div>
+    </div>
+  </div>
+
+</div><!-- end .app -->
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <h3>設定預放初始金額</h3>
+    <input class="form-input" type="number" id="modal-input" placeholder="輸入金額" step="1" inputmode="numeric" />
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="hideModal()">取消</button>
+      <button class="btn-confirm" onclick="saveInitial()">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// =====================
+// FIREBASE CONFIG
+// =====================
+const FB_CONFIG_KEY = 'fb_config_v1';
+
+function loadFirebaseConfig() {
+  try { return JSON.parse(localStorage.getItem(FB_CONFIG_KEY)); } catch(e) { return null; }
+}
+
+function saveFirebaseConfig() {
+  const apiKey = document.getElementById('fb-api-key').value.trim();
+  const projectId = document.getElementById('fb-project-id').value.trim();
+  const databaseURL = document.getElementById('fb-db-url').value.trim();
+  if (!apiKey || !projectId || !databaseURL) { showToast('請填寫所有欄位'); return; }
+  const cfg = { apiKey, authDomain: projectId+'.firebaseapp.com', projectId, databaseURL, storageBucket: projectId+'.appspot.com', messagingSenderId: '000000000', appId: '1:000000000:web:000000' };
+  localStorage.setItem(FB_CONFIG_KEY, JSON.stringify(cfg));
+  location.reload();
+}
+
+// =====================
+// STATE
+// =====================
+const TAGS_IN  = ['轉帳','存入','薪水','退款','其他收入'];
+const TAGS_OUT = ['買貨','買機台','租金','車費','餐飲','日用','其他'];
+
+let db = null;
+let currentType = 'in';
+let selectedTag  = '';
+let filterTag    = 'all';
+let currentTab   = 'main';
+let data  = { initialAmount: 0, entries: [] };
+let logs  = [];
+let fbReady = false;
+
+// =====================
+// HELPERS
+// =====================
+function fmt(n) { return Math.abs(Math.round(n)).toLocaleString('zh-TW'); }
+function today() { return new Date().toISOString().slice(0,10); }
+function nowStr() {
+  const d = new Date();
+  return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('/')+' '+
+         [d.getHours(),d.getMinutes(),d.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+}
+function fmtTime() {
+  const d = new Date();
+  return (d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+
+document.getElementById('input-date').value = today();
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// =====================
+// FIREBASE INIT
+// =====================
+function initFirebase() {
+  const cfg = loadFirebaseConfig();
+  if (!cfg) {
+    document.getElementById('setup-banner').style.display = '';
+    setSyncUI(false, '未連線');
+    useLocalFallback();
+    return;
+  }
+  try {
+    firebase.initializeApp(cfg);
+    db = firebase.database();
+    setSyncUI(true, '同步中');
+
+    // Listen data
+    db.ref('data').on('value', snap => {
+      const val = snap.val();
+      if (val) {
+        data = { initialAmount: val.initialAmount || 0, entries: val.entries ? Object.values(val.entries) : [] };
+        data.entries.sort((a,b) => b.id - a.id);
+      }
+      renderAll();
+    });
+
+    // Listen logs
+    db.ref('logs').on('value', snap => {
+      const val = snap.val();
+      logs = val ? Object.values(val).sort((a,b) => b.id - a.id) : [];
+      if (currentTab==='log') renderLog();
+    });
+
+    fbReady = true;
+    setSyncUI(true, '已連線');
+  } catch(e) {
+    setSyncUI(false, '連線失敗');
+    useLocalFallback();
+  }
+}
+
+function setSyncUI(online, label) {
+  const dot = document.getElementById('sync-dot');
+  document.getElementById('sync-label').textContent = label;
+  dot.className = 'sync-dot' + (online ? ' syncing' : ' offline');
+}
+
+// Local storage fallback (single device)
+function useLocalFallback() {
+  try { const r = localStorage.getItem('ledger_data'); if(r) data = JSON.parse(r); } catch(e){}
+  try { const r = localStorage.getItem('ledger_logs'); if(r) logs = JSON.parse(r); } catch(e){}
+  renderAll();
+}
+
+function saveData() {
+  if (fbReady && db) {
+    const entriesObj = {};
+    data.entries.forEach(e => { entriesObj[e.id] = e; });
+    db.ref('data').set({ initialAmount: data.initialAmount, entries: entriesObj });
+  } else {
+    localStorage.setItem('ledger_data', JSON.stringify(data));
+  }
+}
+
+function saveLogs() {
+  if (fbReady && db) {
+    const logsObj = {};
+    logs.forEach(l => { logsObj[l.id] = l; });
+    db.ref('logs').set(logsObj);
+  } else {
+    localStorage.setItem('ledger_logs', JSON.stringify(logs));
+  }
+}
+
+// =====================
+// UI
+// =====================
+function switchTab(t) {
+  currentTab = t;
+  ['main','ledger','log'].forEach(p => {
+    document.getElementById('page-'+p).style.display = p===t ? '' : 'none';
+    document.getElementById('tab-'+p).className = 'tab-btn'+(p===t?' active':'');
+  });
+  if (t==='ledger') renderLedgerTable();
+  if (t==='log') renderLog();
+}
+
+function setType(t) {
+  currentType = t; selectedTag = '';
+  document.getElementById('btn-in').className  = 'type-btn'+(t==='in' ?' active-in':'');
+  document.getElementById('btn-out').className = 'type-btn'+(t==='out'?' active-out':'');
+  renderTags();
+}
+
+function renderTags() {
+  const tags = currentType==='in' ? TAGS_IN : TAGS_OUT;
+  document.getElementById('tags-row').innerHTML = tags.map(t =>
+    `<button class="tag${selectedTag===t?' active':''}" onclick="selectTag('${t}')">${t}</button>`
+  ).join('');
+}
+
+function selectTag(t) {
+  selectedTag = selectedTag===t ? '' : t;
+  renderTags();
+  const d = document.getElementById('input-desc');
+  if (!d.value) d.value = t;
+}
+
+function setFilter(f) { filterTag = f; renderEntries(); }
+
+function showModal() {
+  document.getElementById('modal-input').value = data.initialAmount || '';
+  document.getElementById('modal').classList.add('open');
+}
+function hideModal() { document.getElementById('modal').classList.remove('open'); }
+
+function saveInitial() {
+  const v = parseInt(document.getElementById('modal-input').value);
+  if (isNaN(v) || v < 0) return;
+  const old = data.initialAmount;
+  data.initialAmount = v;
+  addLog('set', null, `預放初始金額從 ${fmt(old)} 調整為 ${fmt(v)}`);
+  saveData(); renderAll(); hideModal();
+  showToast('初始金額已更新');
+}
+
+function addEntry() {
+  const desc   = document.getElementById('input-desc').value.trim();
+  const amt    = parseInt(document.getElementById('input-amount').value);
+  const date   = document.getElementById('input-date').value || today();
+  const note   = document.getElementById('input-note').value.trim();
+  if (!desc || !amt || amt <= 0) { showToast('請填寫說明和金額'); return; }
+  const entry = { id: Date.now(), type: currentType, desc, amount: amt, date, note, tag: selectedTag };
+  data.entries.unshift(entry);
+  addLog('add', entry, '');
+  saveData();
+  document.getElementById('input-desc').value = '';
+  document.getElementById('input-amount').value = '';
+  document.getElementById('input-note').value = '';
+  document.getElementById('input-date').value = today();
+  selectedTag = ''; renderTags();
+  if (!fbReady) renderAll();
+  showToast('已新增');
+}
+
+function deleteEntry(id) {
+  const entry = data.entries.find(e => e.id===id);
+  if (!entry) return;
+  if (!confirm(`確定刪除「${entry.desc}」？`)) return;
+  addLog('del', entry, '');
+  data.entries = data.entries.filter(e => e.id!==id);
+  saveData();
+  if (!fbReady) renderAll();
+  showToast('已刪除（日誌已記錄）');
+}
+
+function addLog(action, entry, extra) {
+  const log = { id: Date.now()+Math.random(), ts: nowStr(), action, extra: extra||'' };
+  if (entry) { log.desc=entry.desc; log.amount=entry.amount; log.type=entry.type; log.tag=entry.tag||''; log.date=entry.date; log.note=entry.note||''; }
+  logs.unshift(log);
+  saveLogs();
+  if (currentTab==='log') renderLog();
+}
+
+// =====================
+// RENDER
+// =====================
+function renderAll() {
+  renderSummary();
+  renderEntries();
+  if (currentTab==='ledger') renderLedgerTable();
+  if (currentTab==='log')    renderLog();
+}
+
+function renderSummary() {
+  const totalIn  = data.entries.filter(e=>e.type==='in').reduce((s,e)=>s+e.amount,0);
+  const totalOut = data.entries.filter(e=>e.type==='out').reduce((s,e)=>s+e.amount,0);
+  const balance  = (data.initialAmount||0) + totalIn - totalOut;
+  document.getElementById('total-in-disp').textContent = fmt(data.initialAmount||0);
+  document.getElementById('stat-in').textContent  = '+'+fmt(totalIn);
+  document.getElementById('stat-out').textContent = '-'+fmt(totalOut);
+  const el = document.getElementById('balance');
+  el.textContent = (balance>=0?'+':'-')+fmt(balance);
+  el.className = 'balance-val '+(balance>0?'bal-pos':balance<0?'bal-neg':'bal-zero');
+  const t = fmtTime();
+  document.getElementById('last-update').textContent = t;
+  const lu2 = document.getElementById('last-update2');
+  if (lu2) lu2.textContent = t;
+}
+
+function renderEntries() {
+  const allTags = [...new Set(data.entries.map(e=>e.tag).filter(Boolean))];
+  document.getElementById('filter-row').innerHTML =
+    `<button class="filter-btn${filterTag==='all'?' on':''}" onclick="setFilter('all')">全部</button>
+     <button class="filter-btn${filterTag==='in'?' on':''}" onclick="setFilter('in')">存入</button>
+     <button class="filter-btn${filterTag==='out'?' on':''}" onclick="setFilter('out')">支出</button>`+
+    allTags.map(t=>`<button class="filter-btn${filterTag===t?' on':''}" onclick="setFilter('${t}')">${t}</button>`).join('');
+
+  let shown = data.entries;
+  if (filterTag==='in')  shown = shown.filter(e=>e.type==='in');
+  else if (filterTag==='out') shown = shown.filter(e=>e.type==='out');
+  else if (filterTag!=='all') shown = shown.filter(e=>e.tag===filterTag);
+
+  const list = document.getElementById('entries-list');
+  if (!shown.length) { list.innerHTML='<div class="empty-state">沒有符合的記錄</div>'; return; }
+  list.innerHTML = shown.map(e => {
+    const isIn = e.type==='in';
+    return `<div class="entry">
+      <div class="entry-icon ${isIn?'icon-in':'icon-out'}">${isIn?'+':'−'}</div>
+      <div class="entry-info">
+        <div class="entry-desc">${e.desc}</div>
+        <div class="entry-sub">
+          ${e.tag?`<span class="entry-tag-pill">${e.tag}</span>`:''}
+          ${e.note?`<span>${e.note}</span>`:''}
+        </div>
+      </div>
+      <div class="entry-right">
+        <div class="entry-amount ${isIn?'amount-in':'amount-out'}">${isIn?'+':'−'}${fmt(e.amount)}</div>
+        <div class="entry-date-s">${e.date}</div>
+      </div>
+      <button class="entry-del" onclick="deleteEntry(${e.id})" title="刪除">×</button>
+    </div>`;
+  }).join('');
+}
+
+function renderLedgerTable() {
+  const sorted = [...data.entries].sort((a,b)=> a.date.localeCompare(b.date)||a.id-b.id);
+  document.getElementById('ledger-count').textContent = `共 ${sorted.length} 筆`;
+  if (sorted.length>0)
+    document.getElementById('ledger-period').textContent = sorted[0].date+' ～ '+sorted[sorted.length-1].date;
+
+  let running = data.initialAmount||0;
+  let sumIn=0, sumOut=0;
+
+  if (!sorted.length) {
+    document.getElementById('ledger-tbody').innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text3)">尚無資料</td></tr>`;
+    document.getElementById('ledger-tfoot').innerHTML = '';
+    return;
+  }
+
+  document.getElementById('ledger-tbody').innerHTML = sorted.map(e => {
+    const isIn = e.type==='in';
+    if (isIn) { running += e.amount; sumIn += e.amount; }
+    else      { running -= e.amount; sumOut += e.amount; }
+    const bc = running>=0?'td-bal-pos':'td-bal-neg';
+    return `<tr>
+      <td class="td-date">${e.date.slice(5)}</td>
+      <td class="td-desc">${e.desc}${e.note?`<div class="td-note">${e.note}</div>`:''}</td>
+      <td>${e.tag?`<span class="td-tag-pill">${e.tag}</span>`:''}</td>
+      <td class="td-in">${isIn?'+'+fmt(e.amount):''}</td>
+      <td class="td-out">${!isIn?'−'+fmt(e.amount):''}</td>
+      <td class="td-bal ${bc}">${running>=0?'+':'−'}${fmt(running)}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('ledger-tfoot').innerHTML = `<tr>
+    <td colspan="3" style="color:var(--text2);font-size:12px">合計</td>
+    <td class="td-in">+${fmt(sumIn)}</td>
+    <td class="td-out">−${fmt(sumOut)}</td>
+    <td class="td-bal ${running>=0?'td-bal-pos':'td-bal-neg'}">${running>=0?'+':'−'}${fmt(running)}</td>
+  </tr>`;
+}
+
+function renderLog() {
+  document.getElementById('log-count').textContent = `共 ${logs.length} 筆操作記錄`;
+  const list = document.getElementById('log-list');
+  if (!logs.length) { list.innerHTML='<div class="empty-state">尚無操作記錄</div>'; return; }
+  list.innerHTML = logs.map(log => {
+    let body = '';
+    if (log.action==='add') body = `<span class="log-add">新增</span>　${log.desc}　${log.type==='in'?'+':'−'}${fmt(log.amount)} 元`;
+    else if (log.action==='del') body = `<span class="log-del">刪除</span>　${log.desc}　${log.type==='in'?'+':'−'}${fmt(log.amount)} 元`;
+    else body = `<span class="log-set">調整</span>　${log.extra}`;
+    const meta = [log.tag, log.date, log.note].filter(Boolean).join('　·　');
+    return `<div class="log-item">
+      <div class="log-ts">${log.ts}</div>
+      <div class="log-body">${body}</div>
+      ${meta?`<div class="log-meta">${meta}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// =====================
+// BOOT
+// =====================
+renderTags();
+initFirebase();
+</script>
+</body>
+</html>
