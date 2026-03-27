@@ -53,7 +53,6 @@
   .header {
     background: var(--bg2);
     border-bottom: 0.5px solid var(--border);
-    position: sticky; top: 0; z-index: 50;
     padding-top: env(safe-area-inset-top);
   }
   .header-top {
@@ -305,14 +304,13 @@
 
   /* ===== MODAL ===== */
   .modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.65);
-    display: none; align-items: center; justify-content: center; z-index: 100;
-    padding: 20px;
+    display: none; align-items: center; justify-content: center;
+    padding: 20px; margin: 10px 0;
   }
   .modal-overlay.open { display: flex; }
   .modal-box {
     background: var(--bg2); border-radius: var(--radius);
-    padding: 20px; width: 100%; max-width: 300px;
+    padding: 20px; width: 100%; max-width: 340px;
     border: 0.5px solid var(--border2);
   }
   .modal-box h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
@@ -324,13 +322,12 @@
 
   /* ===== TOAST ===== */
   .toast {
-    position: fixed; bottom: calc(24px + env(safe-area-inset-bottom));
-    left: 50%; transform: translateX(-50%) translateY(80px);
+    display: none;
     background: var(--bg3); color: var(--text); border: 0.5px solid var(--border2);
     border-radius: 20px; padding: 9px 18px; font-size: 13px;
-    transition: transform 0.3s ease; z-index: 200; white-space: nowrap;
+    text-align: center; margin: 8px 14px 0;
   }
-  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.show { display: block; }
 
   /* ===== FIREBASE SETUP BANNER ===== */
   .setup-banner {
