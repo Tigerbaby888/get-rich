@@ -377,17 +377,7 @@
 
   <!-- PAGE: 記帳 -->
   <div class="page" id="page-main">
-    <!-- Firebase 設定提示（未設定時顯示） -->
-    <div id="setup-banner" class="setup-banner" style="display:none">
-      <strong>⚙️ 需要設定 Firebase 才能雙手機同步</strong><br>
-      請依照 README 說明建立 Firebase Realtime Database，然後貼上你的設定：
-      <input class="setup-input" id="fb-api-key" placeholder="apiKey" />
-      <input class="setup-input" id="fb-project-id" placeholder="projectId" />
-      <input class="setup-input" id="fb-db-url" placeholder="databaseURL（例：https://xxx-default-rtdb.firebaseio.com）" />
-      <button class="setup-save-btn" onclick="saveFirebaseConfig()">儲存並連線</button>
-    </div>
-
-    <!-- Summary -->
+        <!-- Summary -->
     <div class="summary-card">
       <div class="summary-top">
         <div class="balance-block">
@@ -499,23 +489,20 @@
 
 <script>
 // =====================
-// FIREBASE CONFIG
+// FIREBASE CONFIG (已內建，打開即用)
 // =====================
-const FB_CONFIG_KEY = 'fb_config_v1';
-
 function loadFirebaseConfig() {
-  try { return JSON.parse(localStorage.getItem(FB_CONFIG_KEY)); } catch(e) { return null; }
+  return {
+    apiKey: "AIzaSyACZw7jLqIwB_8rWYBvh2wPRn1uSB9h068",
+    authDomain: "get-rich-9aae7.firebaseapp.com",
+    projectId: "get-rich-9aae7",
+    databaseURL: "https://get-rich-9aae7-default-rtdb.asia-southeast1.firebasedatabase.app",
+    storageBucket: "get-rich-9aae7.appspot.com",
+    messagingSenderId: "1098673224648",
+    appId: "1:1098673224648:web:04c732284ad6dbd57f5efd"
+  };
 }
-
-function saveFirebaseConfig() {
-  const apiKey = document.getElementById('fb-api-key').value.trim();
-  const projectId = document.getElementById('fb-project-id').value.trim();
-  const databaseURL = document.getElementById('fb-db-url').value.trim();
-  if (!apiKey || !projectId || !databaseURL) { showToast('請填寫所有欄位'); return; }
-  const cfg = { apiKey, authDomain: projectId+'.firebaseapp.com', projectId, databaseURL, storageBucket: projectId+'.appspot.com', messagingSenderId: '000000000', appId: '1:000000000:web:000000' };
-  localStorage.setItem(FB_CONFIG_KEY, JSON.stringify(cfg));
-  location.reload();
-}
+function saveFirebaseConfig() {}
 
 // =====================
 // STATE
